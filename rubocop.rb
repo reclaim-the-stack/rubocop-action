@@ -41,6 +41,13 @@ module Github
     define_singleton_method(method) do |path, params = nil|
       request(klass, path, params)
     end
+
+    define_singleton_method("#{method}!") do |path, params = nil|
+      response = request(klass, path, params)
+      raise HttpError, "status: #{response.code}, body: #{response.body}" unless response.is_a?(Net::HTTPSuccess)
+
+      JSON.parse(response.body) if response.body
+    end
   end
 
   def self.request(request_class, path, params = nil)
@@ -50,11 +57,7 @@ module Github
     request["Authorization"] = "Bearer #{ENV.fetch('GITHUB_TOKEN')}"
     request["Accept"] = "application/vnd.github.v3+json"
 
-    response = CONNECTION.request(request)
-
-    raise HttpError, "status: #{response.code}, body: #{response.body}" unless response.is_a?(Net::HTTPSuccess)
-
-    JSON.parse(response.body) if response.body
+    CONNECTION.request(request)
   end
 end
 
@@ -66,7 +69,7 @@ owner_and_repository = ENV.fetch("GITHUB_REPOSITORY")
 
 changed_files = []
 1.step do |page|
-  files = Github.get("/repos/#{owner_and_repository}/pulls/#{pr_number}/files?per_page=100&page=#{page}")
+  files = Github.get!("/repos/#{owner_and_repository}/pulls/#{pr_number}/files?per_page=100&page=#{page}")
   changed_files.concat(files)
   break if files.length < 100
 end
@@ -94,7 +97,7 @@ files_with_offenses =
 
 puts "Fetching comments from https://api.github.com/repos/#{owner_and_repository}/pulls/#{pr_number}/comments"
 
-existing_comments = Github.get("/repos/#{owner_and_repository}/pulls/#{pr_number}/comments")
+existing_comments = Github.get!("/repos/#{owner_and_repository}/pulls/#{pr_number}/comments")
 
 comments_made_by_rubocop = existing_comments.select do |comment|
   comment.fetch("body").include?("rubocop-comment-id")
@@ -118,10 +121,12 @@ fixed_comments.each do |comment|
 
   puts "Deleting resolved comment #{comment_id} on #{path} line #{line}"
 
-  Github.delete("/repos/#{owner_and_repository}/pulls/comments/#{comment_id}")
+  Github.delete!("/repos/#{owner_and_repository}/pulls/comments/#{comment_id}")
 end
 
 # Comment on the pull request with the offenses found
+
+offences_outside_diff = []
 
 files_with_offenses.each do |file|
   path = file.fetch("path")
@@ -167,14 +172,55 @@ files_with_offenses.each do |file|
       # Somehow the commit_id should not be just the HEAD SHA: https://stackoverflow.com/a/71431370/1075108
       commit_id = github_event.fetch("pull_request").fetch("head").fetch("sha")
 
-      Github.post(
+      response = Github.post(
         "/repos/#{owner_and_repository}/pulls/#{pr_number}/comments",
         body: body,
         path: path,
         commit_id: commit_id,
         line: line,
       )
+
+      # Rubocop might hit errors on lines which are not part of the diff and thus cannot be commented on.
+      if response.code == "422" && response.body.include?("line must be part of the diff")
+        puts "Deferring comment on #{path} line #{line} because it isn't part of the diff"
+
+        offences_outside_diff << { path: path, line: line, message: message }
+      end
     end
+  end
+end
+
+# If there are any offenses outside the diff, make a separate comment for them
+
+if offences_outside_diff.any?
+  existing_comment = comments_made_by_rubocop.find do |comment|
+    comment.fetch("body").include?("rubocop-comment-id: outside-diff")
+  end
+
+  body = <<~BODY
+    <!-- rubocop-comment-id: outside-diff -->
+    Rubocop offenses found outside of the diff:
+
+  BODY
+
+  body += offences_outside_diff.map do |offense|
+    "**#{offense.fetch(:path)}:#{offense.fetch(:line)}**\n#{offense.fetch(:message)}"
+  end.join("\n\n")
+
+  if existing_comment
+    existing_comment_id = existing_comment.fetch("id")
+
+    # No need to do anything if the offense already exists and hasn't changed
+    if existing_comment.fetch("body") == body
+      puts "Skipping unchanged separate comment #{existing_comment_id}"
+    else
+      puts "Updating comment #{existing_comment_id} on pull request"
+      Github.patch!("/repos/#{owner_and_repository}/pulls/comments/#{existing_comment_id}", body: body)
+    end
+  else
+    puts "Commenting on pull request with offenses found outside the diff"
+
+    Github.post!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments", body: body)
   end
 end
 
