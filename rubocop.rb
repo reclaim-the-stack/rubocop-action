@@ -16,7 +16,9 @@ versioned_rubocop_gems =
   else
     ENV.fetch("RUBOCOP_GEM_VERSIONS").split
   end
-system "time gem install #{versioned_rubocop_gems.join(' ')} --no-document --conservative"
+gem_install_command = "gem install #{versioned_rubocop_gems.join(' ')} --no-document --conservative"
+puts "Installing gems with:", gem_install_command
+system "time #{gem_install_command}"
 puts "::endgroup::"
 
 # Script
