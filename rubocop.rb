@@ -95,7 +95,7 @@ files_with_offenses =
 
 # Fetch existing pull request comments
 
-puts "Fetching comments from https://api.github.com/repos/#{owner_and_repository}/pulls/#{pr_number}/comments"
+puts "Fetching PR comments from https://api.github.com/repos/#{owner_and_repository}/pulls/#{pr_number}/comments"
 
 existing_comments = Github.get!("/repos/#{owner_and_repository}/pulls/#{pr_number}/comments")
 
@@ -192,10 +192,11 @@ end
 
 # If there are any offenses outside the diff, make a separate comment for them
 
+separate_comments = Github.get!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments")
+existing_separate_comment = separate_comments.find do |comment|
+  comment.fetch("body").include?("rubocop-comment-id: outside-diff")
+end
 if offences_outside_diff.any?
-  existing_comment = comments_made_by_rubocop.find do |comment|
-    comment.fetch("body").include?("rubocop-comment-id: outside-diff")
-  end
 
   body = <<~BODY
     <!-- rubocop-comment-id: outside-diff -->
@@ -207,11 +208,11 @@ if offences_outside_diff.any?
     "**#{offense.fetch(:path)}:#{offense.fetch(:line)}**\n#{offense.fetch(:message)}"
   end.join("\n\n")
 
-  if existing_comment
-    existing_comment_id = existing_comment.fetch("id")
+  if existing_separate_comment
+    existing_comment_id = existing_separate_comment.fetch("id")
 
     # No need to do anything if the offense already exists and hasn't changed
-    if existing_comment.fetch("body") == body
+    if existing_separate_comment.fetch("body") == body
       puts "Skipping unchanged separate comment #{existing_comment_id}"
     else
       puts "Updating comment #{existing_comment_id} on pull request"
@@ -222,6 +223,10 @@ if offences_outside_diff.any?
 
     Github.post!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments", body: body)
   end
+elsif existing_separate_comment
+  existing_comment_id = existing_separate_comment.fetch("id")
+  puts "Deleting resolved separate comment #{existing_comment_id}"
+  Github.delete("/repos/#{owner_and_repository}/issues/comments/#{existing_comment_id}")
 end
 
 # Fail the build if there were any offenses
