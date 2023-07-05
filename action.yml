@@ -1,4 +1,4 @@
-name: Rubocop
+name: Reclaim The Stack - Rubocop
 description: Runs rubocop and posts offences as inline PR comments.
 inputs:
   github_token:
