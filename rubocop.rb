@@ -63,7 +63,7 @@ end
 
 # Figure out which ruby files have changed and run Rubocop on them
 
-github_event = JSON.load_file(ENV.fetch("GITHUB_EVENT_PATH"))
+github_event = JSON.parse(File.read(ENV.fetch("GITHUB_EVENT_PATH")))
 pr_number = github_event.fetch("pull_request").fetch("number")
 owner_and_repository = ENV.fetch("GITHUB_REPOSITORY")
 
