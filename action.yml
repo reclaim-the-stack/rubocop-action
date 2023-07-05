@@ -1,0 +1,17 @@
+name: Rubocop
+description: Runs rubocop and posts offences as inline PR comments.
+inputs:
+  github_token:
+    description: GITHUB_TOKEN
+    default: ${{ github.token }}
+  gem_versions:
+    description: Gem versions to install
+    default: rubocop:1.54.1 rubocop-rails:2.20.2 rubocop-rspec:2.22.0
+runs:
+  using: composite
+  steps:
+    - run: ruby rubocop.rb
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        RUBOCOP_GEM_VERSIONS: ${{ inputs.gem_versions }}
