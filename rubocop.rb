@@ -36,7 +36,7 @@ changed_ruby_files = Github.pull_request_ruby_files(owner_and_repository, pr_num
 # JSON reference: https://docs.rubocop.org/rubocop/formatters.html#json-formatter
 files_with_offenses =
   if changed_ruby_files.any?
-    command = "rubocop #{changed_ruby_files.map(&:path).join(' ')} --format json --force-exclusion"
+    command = "rubocop #{changed_ruby_files.map(&:path).join(' ')} --format json --force-exclusion #{ARGV.join(' ')}"
 
     puts "Running rubocop with: #{command}"
     JSON.parse(`#{command}`).fetch("files")

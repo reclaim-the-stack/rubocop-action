@@ -7,10 +7,13 @@ inputs:
   gem_versions:
     description: Gem versions to install
     default: rubocop:1.54.1 rubocop-rails:2.20.2 rubocop-rspec:2.22.0
+  rubocop_args:
+    description: Arguments passed to rubocop cli
+    default: ""
 runs:
   using: composite
   steps:
-    - run: ruby $GITHUB_ACTION_PATH/rubocop.rb
+    - run: ruby $GITHUB_ACTION_PATH/rubocop.rb ${{ inputs.rubocop_args }}
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
