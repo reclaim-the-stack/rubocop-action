@@ -53,3 +53,13 @@ Specifying `gem_versions` in the standard `gem install` format.
         with:
           gem_versions: rubocop:1.18.3 rubocop-rspec:2.0.0 rubocop-<some-other-plugin>:1.2.0
 ```
+
+#### rubocop arguments
+
+You can pass arguments to rubocop. E.g.
+
+```yaml
+      - uses: reclaim-the-stack/rubocop-action@v1
+        with:
+          rubocop_args: --config .rubocop.yml
+```
