@@ -61,5 +61,5 @@ You can pass arguments to rubocop. E.g.
 ```yaml
       - uses: reclaim-the-stack/rubocop-action@v1
         with:
-          rubocop_args: --config .rubocop.yml
+          rubocop_arguments: --config .rubocop.yml
 ```
