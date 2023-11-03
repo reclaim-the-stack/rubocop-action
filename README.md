@@ -56,7 +56,7 @@ Specifying `gem_versions` in the standard `gem install` format.
 
 #### rubocop arguments
 
-You can pass arguments to rubocop. E.g.
+Allows you to pass additional arguments to rubocop. E.g.
 
 ```yaml
       - uses: reclaim-the-stack/rubocop-action@v1
