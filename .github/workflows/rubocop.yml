@@ -14,4 +14,4 @@ jobs:
       - uses: ruby/setup-ruby@v1
       - uses: ./
         with:
-          rubocop_args: --config .rubocop.yml
+          rubocop_arguments: --config .rubocop.yml
