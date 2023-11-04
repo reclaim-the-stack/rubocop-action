@@ -54,7 +54,7 @@ Specifying `gem_versions` in the standard `gem install` format.
           gem_versions: rubocop:1.18.3 rubocop-rspec:2.0.0 rubocop-<some-other-plugin>:1.2.0
 ```
 
-#### rubocop arguments
+#### `rubocop_arguments`
 
 Allows you to pass additional arguments to rubocop. E.g.
 
@@ -63,3 +63,7 @@ Allows you to pass additional arguments to rubocop. E.g.
         with:
           rubocop_arguments: --config .rubocop.yml
 ```
+
+### Known issues
+
+We don't handle hitting API rate limits on the GitHub API. Presumably this could end up being a problem if you create a pull request with a ton of offences requiring inline comments. Shouldn't be a problem for normal use though.
