@@ -1,6 +1,9 @@
 name: Reclaim The Stack - Rubocop
 description: Runs rubocop and posts offences as inline PR comments.
 inputs:
+  failure_exit_code:
+    description: Exit code after running rubocop-- a non-zero exit code will fail the build
+    default: "108"
   github_token:
     description: GITHUB_TOKEN
     default: ${{ github.token }}
@@ -16,5 +19,6 @@ runs:
     - run: ruby $GITHUB_ACTION_PATH/rubocop.rb ${{ inputs.rubocop_arguments }}
       shell: bash
       env:
+        FAILURE_EXIT_CODE: ${{ inputs.failure_exit_code }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
         RUBOCOP_GEM_VERSIONS: ${{ inputs.gem_versions }}
