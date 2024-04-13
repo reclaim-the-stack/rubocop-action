@@ -7,6 +7,9 @@ inputs:
   gem_versions:
     description: Gem versions to install
     default: rubocop:1.54.1 rubocop-rails:2.20.2 rubocop-rspec:2.22.0
+  outside_diff:
+    description: Log offences found outside of PR diff
+    default: "true"
   rubocop_arguments:
     description: Arguments passed to rubocop cli
     default: ""
@@ -17,4 +20,5 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
+        OUTSIDE_DIFF: ${{ inputs.outside_diff }}
         RUBOCOP_GEM_VERSIONS: ${{ inputs.gem_versions }}

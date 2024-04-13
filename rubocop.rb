@@ -176,7 +176,9 @@ if offences_outside_diff.any?
   else
     puts "Commenting on pull request with offenses found outside the diff"
 
-    Github.post!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments", body: body)
+    if ENV.fetch("OUTSIDE_DIFF", "true") == "true"
+      Github.post!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments", body: body)
+    end
   end
 elsif existing_separate_comment
   existing_comment_id = existing_separate_comment.fetch("id")
