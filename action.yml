@@ -6,7 +6,7 @@ inputs:
     default: ${{ github.token }}
   gem_versions:
     description: Gem versions to install
-    default: rubocop:1.54.1 rubocop-rails:2.20.2 rubocop-rspec:2.22.0
+    default: rubocop:1.64.1 rubocop-rails:2.25.0 rubocop-rspec:2.30.0
   rubocop_arguments:
     description: Arguments passed to rubocop cli
     default: ""
