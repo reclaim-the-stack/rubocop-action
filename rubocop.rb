@@ -10,8 +10,10 @@ versioned_rubocop_gems =
   if ENV.fetch("RUBOCOP_GEM_VERSIONS").downcase == "gemfile"
     require "bundler"
 
+    rubocop_config_gems_without_prefix = %w[syntax_tree].to_set
+
     Bundler::LockfileParser.new(Bundler.read_file("Gemfile.lock")).specs
-      .select { |spec| spec.name.start_with? "rubocop" }
+      .select { |spec| spec.name.start_with?("rubocop") || rubocop_config_gems_without_prefix.include?(spec.name) }
       .map { |spec| "#{spec.name}:#{spec.version}" }
   else
     ENV.fetch("RUBOCOP_GEM_VERSIONS").split
