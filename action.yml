@@ -1,20 +1,28 @@
-name: Reclaim The Stack - Rubocop
-description: Runs rubocop and posts offences as inline PR comments.
+name: Reclaim The Stack - Erb Lint
+description: Runs erb_lint and posts offences as inline PR comments.
 inputs:
+  failure_exit_code:
+    description: Exit code after running erb_lint-- a non-zero exit code will fail the build
+    default: "109"
   github_token:
     description: GITHUB_TOKEN
     default: ${{ github.token }}
   gem_versions:
     description: Gem versions to install
-    default: rubocop:1.64.1 rubocop-rails:2.25.0 rubocop-rspec:2.30.0
-  rubocop_arguments:
-    description: Arguments passed to rubocop cli
+    default: erb_lint:0.9.0
+  outside_diff:
+    description: Log offences found outside of PR diff
+    default: "true"
+  erb_lint_arguments:
+    description: Arguments passed to erb_lint cli
     default: ""
 runs:
   using: composite
   steps:
-    - run: ruby $GITHUB_ACTION_PATH/rubocop.rb ${{ inputs.rubocop_arguments }}
+    - run: ruby $GITHUB_ACTION_PATH/erb_lint.rb ${{ inputs.erb_lint_arguments }}
       shell: bash
       env:
+        FAILURE_EXIT_CODE: ${{ inputs.failure_exit_code }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        RUBOCOP_GEM_VERSIONS: ${{ inputs.gem_versions }}
+        OUTSIDE_DIFF: ${{ inputs.outside_diff }}
+        ERB_LINT_GEM_VERSIONS: ${{ inputs.gem_versions }}

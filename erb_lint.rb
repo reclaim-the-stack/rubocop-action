@@ -1,24 +1,25 @@
-# This script is used to run rubocop on the files that have changed in a pull request
+# This script is used to run erb_lint on the files that have changed in a pull request
 # and then comment on the pull request with the offenses found. It also checks the
 # pull request for existing comments and removes them if the offense has been fixed.
 # This script is intended to run soley in the context of GitHub Actions on pull requests.
+#
+# See https://github.com/Shopify/erb_lint
+#     https://www.rubydoc.info/gems/erb_lint/0.9.0/index
 
 # Setup
 
-puts "::group::Installing Rubocop gems"
-versioned_rubocop_gems =
-  if ENV.fetch("RUBOCOP_GEM_VERSIONS").downcase == "gemfile"
+puts "::group::Installing erb_lint gems"
+versioned_erb_lint_gems =
+  if ENV.fetch("ERB_LINT_GEM_VERSIONS").downcase == "gemfile"
     require "bundler"
 
-    rubocop_config_gems_without_prefix = %w[syntax_tree].to_set
-
     Bundler::LockfileParser.new(Bundler.read_file("Gemfile.lock")).specs
-      .select { |spec| spec.name.start_with?("rubocop") || rubocop_config_gems_without_prefix.include?(spec.name) }
+      .select { |spec| spec.name.start_with? "erb_lint" }
       .map { |spec| "#{spec.name}:#{spec.version}" }
   else
-    ENV.fetch("RUBOCOP_GEM_VERSIONS").split
+    ENV.fetch("ERB_LINT_GEM_VERSIONS").split
   end
-gem_install_command = "gem install #{versioned_rubocop_gems.join(' ')} --no-document --conservative"
+gem_install_command = "gem install #{versioned_erb_lint_gems.join(' ')} --no-document --conservative"
 puts "Installing gems with:", gem_install_command
 system "time #{gem_install_command}"
 puts "::endgroup::"
@@ -27,23 +28,24 @@ puts "::endgroup::"
 
 require_relative "lib/github"
 
-# Figure out which ruby files have changed and run Rubocop on them
+# Figure out which erb files have changed and run erb_lint on them
 
 github_event = JSON.parse(File.read(ENV.fetch("GITHUB_EVENT_PATH")))
 pr_number = github_event.fetch("pull_request").fetch("number")
 owner_and_repository = ENV.fetch("GITHUB_REPOSITORY")
 
-changed_ruby_files = Github.pull_request_ruby_files(owner_and_repository, pr_number)
+changed_erb_files = Github.pull_request_erb_files(owner_and_repository, pr_number)
 
-# JSON reference: https://docs.rubocop.org/rubocop/formatters.html#json-formatter
+# JSON reference, run:
+# erb_lint --format json foobar.erb
 files_with_offenses =
-  if changed_ruby_files.any?
-    command = "rubocop #{changed_ruby_files.map(&:path).join(' ')} --format json --force-exclusion #{ARGV.join(' ')}"
+  if changed_erb_files.any?
+    command = "erb_lint #{changed_erb_files.map(&:path).join(' ')} --format json --force-exclusion #{ARGV.join(' ')}"
 
-    puts "Running rubocop with: #{command}"
+    puts "Running erb_lint with: #{command}"
     JSON.parse(`#{command}`).fetch("files")
   else
-    puts "No changed Ruby files, skipping rubocop"
+    puts "No changed .erb files, skipping erb_lint"
 
     []
   end
@@ -54,13 +56,13 @@ puts "Fetching PR comments from https://api.github.com/repos/#{owner_and_reposit
 
 existing_comments = Github.get!("/repos/#{owner_and_repository}/pulls/#{pr_number}/comments")
 
-comments_made_by_rubocop = existing_comments.select do |comment|
-  comment.fetch("body").include?("rubocop-comment-id")
+comments_made_by_erb_lint = existing_comments.select do |comment|
+  comment.fetch("body").include?("erb_lint-comment-id")
 end
 
 # Find existing comments which no longer have offenses and delete them
 
-fixed_comments = comments_made_by_rubocop.reject do |comment|
+fixed_comments = comments_made_by_erb_lint.reject do |comment|
   files_with_offenses.any? do |file|
     file.fetch("path") == comment.fetch("path") &&
       file.fetch("offenses").any? do |offense|
@@ -100,19 +102,19 @@ files_with_offenses.each do |file|
 
     message = offenses.map do |offense|
       correctable_prefix = "[Correctable] " if offense.fetch("correctable")
-      "#{correctable_prefix}#{offense.fetch('cop_name')}: #{offense.fetch('message')}"
+      "#{correctable_prefix}#{offense.fetch('linter')}: #{offense.fetch('message')}"
     end.join("\n")
 
     body = <<~BODY
-      <!-- rubocop-comment-id: #{path}-#{line} -->
+      <!-- erb_lint-comment-id: #{path}-#{line} -->
       #{message}
     BODY
 
     # If there is already a comment on this line, update it if necessary.
     # Otherwise create a new comment.
 
-    existing_comment = comments_made_by_rubocop.find do |comment|
-      comment.fetch("body").include?("rubocop-comment-id: #{path}-#{line}")
+    existing_comment = comments_made_by_erb_lint.find do |comment|
+      comment.fetch("body").include?("erb_lint-comment-id: #{path}-#{line}")
     end
 
     if existing_comment
@@ -126,7 +128,7 @@ files_with_offenses.each do |file|
 
       puts "Updating comment #{comment_id} on #{path} line #{line}"
       Github.patch("/repos/#{owner_and_repository}/pulls/comments/#{comment_id}", body: body)
-    elsif in_diff?(changed_ruby_files, path, line)
+    elsif in_diff?(changed_erb_files, path, line)
       puts "Commenting on #{path} line #{line}"
 
       # Somehow the commit_id should not be just the HEAD SHA: https://stackoverflow.com/a/71431370/1075108
@@ -149,15 +151,15 @@ end
 
 separate_comments = Github.get!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments")
 existing_separate_comment = separate_comments.find do |comment|
-  comment.fetch("body").include?("rubocop-comment-id: outside-diff")
+  comment.fetch("body").include?("erb_lint-comment-id: outside-diff")
 end
 
 if offences_outside_diff.any?
   puts "Found #{offences_outside_diff.count} offenses outside of the diff"
 
   body = <<~BODY
-    <!-- rubocop-comment-id: outside-diff -->
-    Rubocop offenses found outside of the diff:
+    <!-- erb_lint-comment-id: outside-diff -->
+    Erb Lint offenses found outside of the diff:
 
   BODY
 
@@ -178,7 +180,9 @@ if offences_outside_diff.any?
   else
     puts "Commenting on pull request with offenses found outside the diff"
 
-    Github.post!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments", body: body)
+    if ENV.fetch("OUTSIDE_DIFF", "true") == "true"
+      Github.post!("/repos/#{owner_and_repository}/issues/#{pr_number}/comments", body: body)
+    end
   end
 elsif existing_separate_comment
   existing_comment_id = existing_separate_comment.fetch("id")
@@ -194,5 +198,5 @@ number_of_offenses = files_with_offenses.sum { |file| file.fetch("offenses").len
 if number_of_offenses > 0
   puts ""
   puts "#{number_of_offenses} offenses found! Failing the build..."
-  exit 108
+  exit ENV.fetch("FAILURE_EXIT_CODE", 109).to_i
 end
