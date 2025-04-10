@@ -4,6 +4,9 @@ require "net/http"
 module Github
   HttpError = Class.new(StandardError)
 
+  # The File class wraps the Github API response for files in a pull requests. Its main purpose
+  # is to provide the #changed_lines method which returns the line numbers of the lines which
+  # have changed in a file by parsing its patch attribute.
   class File
     RANGE_INFORMATION_LINE = /^@@ .+\+(?<line_number>\d+),/.freeze
     MODIFIED_LINE = /^\+(?!\+|\+)/.freeze
@@ -42,12 +45,10 @@ module Github
     delete: Net::HTTP::Delete,
   }.freeze
 
+  # Defines .get, .patch, .post, and .delete methods for making requests to the GitHub API.
+  # For successful requests, The JSON parsed body is returned, otherwise HttpError is raised.
   REQUEST_METHOD_TO_CLASS.each do |method, klass|
     define_singleton_method(method) do |path, params = nil|
-      request(klass, path, params)
-    end
-
-    define_singleton_method("#{method}!") do |path, params = nil|
       response = request(klass, path, params)
       raise HttpError, "status: #{response.code}, body: #{response.body}" unless response.is_a?(Net::HTTPSuccess)
 
@@ -55,10 +56,11 @@ module Github
     end
   end
 
+  # Returns Array of File objects for all files in a pull request which have the .rb extension.
   def self.pull_request_ruby_files(owner_and_repository, pr_number)
     changed_files = []
     1.step do |page|
-      files = Github.get!("/repos/#{owner_and_repository}/pulls/#{pr_number}/files?per_page=100&page=#{page}")
+      files = Github.get("/repos/#{owner_and_repository}/pulls/#{pr_number}/files?per_page=100&page=#{page}")
       changed_files.concat(files)
       break if files.length < 100
     end
