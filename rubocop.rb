@@ -5,6 +5,8 @@
 
 # Setup
 
+require "open3"
+
 puts "::group::Installing Rubocop gems"
 
 if ENV.fetch("RUBOCOP_GEM_VERSIONS").downcase == "gemfile"
@@ -55,7 +57,23 @@ files_with_offenses =
     command = "#{rubocop_command} #{changed_ruby_files.map(&:path).join(' ')} --format json --force-exclusion #{ARGV.join(' ')}"
 
     puts "Running rubocop with: #{command}"
-    JSON.parse(`#{command}`).fetch("files")
+    stdout, stderr, status = Open3.capture3(command)
+
+    if status.success?
+      puts "Rubocop finished successfully"
+    else
+      puts "Rubocop failed with status #{status.exitstatus}"
+      puts "Rubocop output:\n#{stdout}" unless stdout.empty?
+      puts "Rubocop error output:\n#{stderr}" unless stderr.empty?
+    end
+
+    # In case --debug is passed to rubocop, the output is not valid JSON so we have to substring it
+    json_start = stdout.index("{")
+    json_end = stdout.rindex("}")
+
+    abort "ERROR: No JSON found in rubocop output" unless json_start && json_end
+
+    JSON.parse(stdout[json_start..json_end]).fetch("files")
   else
     puts "No changed Ruby files, skipping rubocop"
 
