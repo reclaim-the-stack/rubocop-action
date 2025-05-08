@@ -226,5 +226,5 @@ number_of_offenses = files_with_offenses.sum { |file| file.fetch("offenses").len
 if number_of_offenses > 0
   puts ""
   puts "#{number_of_offenses} offenses found! Failing the build..."
-  exit 108
+  exit ENV.fetch("FAILURE_EXIT_CODE", 108).to_i
 end
