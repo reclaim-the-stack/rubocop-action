@@ -39,7 +39,15 @@ files_with_offenses =
     command = "rubocop #{changed_ruby_files.map(&:path).join(' ')} --format json --force-exclusion #{ARGV.join(' ')}"
 
     puts "Running rubocop with: #{command}"
-    JSON.parse(`#{command}`).fetch("files")
+
+    # Execute command and capture stdout
+    raw_output = `#{command}`
+
+    # Strip any leading non-JSON output (like git/bundler fetch notices)
+    json_start = raw_output.index("{")
+    json_payload = json_start ? raw_output[json_start..] : raw_output
+
+    JSON.parse(json_payload).fetch("files")
   else
     puts "No changed Ruby files, skipping rubocop"
 
