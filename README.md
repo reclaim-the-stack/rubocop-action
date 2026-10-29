@@ -21,7 +21,7 @@ jobs:
   rubocop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
       - uses: reclaim-the-stack/rubocop-action@v1
 ```
@@ -38,7 +38,7 @@ By default `rubocop` / `rubocop-rails` and `rubocop-rspec` gems are installed. C
 
 You can override the gems and versions either by:
 
-Specifying `gem_versions` as `Gemfile` in which case we parse your `Gemfile.lock` and install any gems with a name beginning with `rubocop` with their specified version.
+Specifying `gem_versions` as `Gemfile` in which case we remove all gems except those with `rubocop` in their name (and `syntax_tree`) from your `Gemfile` and run `bundle install`, installing the versions locked in your `Gemfile.lock`. Rubocop is then run via `bundle exec`.
 
 ```yaml
       - uses: reclaim-the-stack/rubocop-action@v1
@@ -63,6 +63,20 @@ Allows you to pass additional arguments to rubocop. E.g.
         with:
           rubocop_arguments: --config .rubocop.yml
 ```
+
+#### `failure_exit_code`
+
+The exit code used when offences are found. Defaults to `108`. Set it to `0` to post comments on offences without failing the build.
+
+```yaml
+      - uses: reclaim-the-stack/rubocop-action@v1
+        with:
+          failure_exit_code: 0
+```
+
+### Versioning
+
+The `v1` tag tracks the latest `v1.x.x` release. Pin to a specific release, e.g. `reclaim-the-stack/rubocop-action@v1.2.0`, if you prefer to opt in to updates manually.
 
 ### Known issues
 
